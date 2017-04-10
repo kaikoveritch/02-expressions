@@ -20,6 +20,18 @@ func minus (_ lhs : Term, _ rhs : Term) -> Map {
   ]
 }
 
+// Addition on naturals:
+// l -> lv, r -> rv
+// -------------------
+// l + r -> lv +Nat rv
+//
+// Subtraction on naturals:
+// l -> lv, r -> rv, lv >= rv
+// --------------------------
+// l - r -> lv -Nat rv
+//
+// Anything on naturals:
+// ...
 func eval (_ input: Term, _ output: Term) -> Goal {
   func binary (op: @escaping (Term, Term) -> Term, semantics: @escaping (Term, Term) -> Term) -> Goal {
     return freshn { g in

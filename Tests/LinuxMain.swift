@@ -1,6 +1,6 @@
 import XCTest
-@testable import _2_expressionsTests
+@testable import expressionsTests
 
 XCTMain([
-    testCase(_2_expressionsTests.allTests),
+    testCase(expressionsTests.allTests),
 ])

@@ -1,9 +1,9 @@
 import XCTest
-@testable import _2_expressions
+@testable import expressions
 
 import LogicKit
 
-class _2_expressionsTests: XCTestCase {
+class expressionsTests: XCTestCase {
     func testExample() {
       let t = minus (constant (1), plus (constant (2), constant (3)))
       let v = Variable (named: "v")
