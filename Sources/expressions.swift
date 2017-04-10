@@ -1,70 +1,163 @@
 import LogicKit
 
-func constant (_ n : Int) -> Term {
-  return Value (n)
+
+// ----------
+// True in B
+let False = Value(false)
+
+// -----------
+// False in B
+let True = Value(true)
+
+// b in B
+// -----------
+// not(b) in B
+func not (_ term: Term) -> Map {
+   return [
+      "op"  : Value("not"),
+      "rhs" : term
+   ]
 }
 
-func plus (_ lhs : Term, _ rhs : Term) -> Map {
+// b,p in B
+// -------------
+// and(b,p) in B
+func and (_ lhs : Term, _ rhs : Term) -> Map {
   return [
-    "op"  : Value ("+"),
+    "op"  : Value ("and"),
     "lhs" : lhs,
-    "rhs" : rhs,
+    "rhs" : rhs
   ]
 }
 
-func minus (_ lhs : Term, _ rhs : Term) -> Map {
+// b,p in B
+// ------------
+// or(b,p) in B
+func or (_ lhs : Term, _ rhs : Term) -> Map {
   return [
-    "op"  : Value ("-"),
+    "op"  : Value ("or"),
     "lhs" : lhs,
-    "rhs" : rhs,
+    "rhs" : rhs
   ]
 }
 
-// Addition on naturals:
-// l -> lv, r -> rv
-// -------------------
-// l + r -> lv +Nat rv
-//
-// Subtraction on naturals:
-// l -> lv, r -> rv, lv >= rv
-// --------------------------
-// l - r -> lv -Nat rv
-//
-// Anything on naturals:
-// ...
+// b,p in B
+// -----------------
+// implies(b,p) in B
+func implies (_ lhs : Term, _ rhs : Term) -> Map {
+  return [
+    "op"  : Value ("=>"),
+    "lhs" : lhs,
+    "rhs" : rhs
+  ]
+}
+
+// b,p in B
+// ---------------
+// equiv(b,p) in B
+func equiv (_ lhs : Term, _ rhs : Term) -> Map {
+  return [
+    "op"  : Value ("<=>"),
+    "lhs" : lhs,
+    "rhs" : rhs
+  ]
+}
+
+// Evaluation
 func eval (_ input: Term, _ output: Term) -> Goal {
-  func binary (op: @escaping (Term, Term) -> Term, semantics: @escaping (Term, Term) -> Term) -> Goal {
-    return freshn { g in
-      let l  = g ["l"]
-      let r  = g ["r"]
-      let lv = g ["lv"]
-      let rv = g ["rv"]
-      return input === op (l, r) &&
-             eval (l, lv) &&
-             eval (r, rv) &&
-             inEnvironment { s in
-               return output === semantics (s [lv], s [rv])
-             }
-    }
-  }
-  return
-    (isValue (input, Int.self) && input === output)
-    ||
-    binary (op: plus, semantics: { lhs, rhs in
-      switch (lhs, rhs) {
-      case let (lhs, rhs) as (Value<Int>, Value<Int>):
-        return Value (lhs.wrapped + rhs.wrapped)
-      default:
-        assert (false)
-      }
-    })
-    ||
-    binary (op: minus, semantics: { lhs, rhs in
-      switch (lhs, rhs) {
-      case let (lhs, rhs) as (Value<Int>, Value<Int>):
-        return Value (lhs.wrapped - rhs.wrapped)
-      default:
-        assert (false)
-      }
-    })
+   return
+      //
+      // --------------
+      // True -B-> true
+      (input === True && output === True)
+      ||
+      //
+      // ----------------
+      // False -B-> false
+      (input === False && output === False)
+      ||
+      // b -B-> eb
+      // -----------------------
+      // not(b) -B-> not{Bool}eb
+      delayed(freshn{v in
+         let t = v ["t"]
+         let et = v ["et"]
+         return (
+            input === not(t) && eval(t,et) &&
+            ((et === True && output === False) ||
+            (et === False && output === True))
+         )
+      })
+      ||
+      // b -B-> eb, p -B-> ep
+      // ---------------------------
+      // and(b,p) -B-> b and{Bool} p
+      delayed(freshn{v in
+         let l = v ["l"]
+         let r = v ["r"]
+         let el = v ["el"]
+         let er = v ["er"]
+         return
+            (input === and(l, r)) &&
+            eval(l, el) && eval(r, er) &&
+            (
+               (el === True && er === True && output === True) ||
+               (el === False && output === False) ||
+               (er === False && output === False)
+            )
+      })
+      ||
+      // b -B-> eb, p -B-> ep
+      // -------------------------
+      // or(b,p) -B-> b or{Bool} p
+      delayed(freshn{v in
+         let l = v ["l"]
+         let r = v ["r"]
+         let el = v ["el"]
+         let er = v ["er"]
+         return
+            (input === or(l, r)) &&
+            eval(l, el) && eval(r, er) &&
+            (
+               (el === False && er === False && output === False) ||
+               (el === True && output === True) ||
+               (er === True && output === True)
+            )
+      })
+      ||
+      // b -B-> eb, p -B-> ep
+      // ------------------------------
+      // implies(b,p) -B-> b =>{Bool} p
+      delayed(freshn{v in
+         let l = v ["l"]
+         let r = v ["r"]
+         let el = v ["el"]
+         let er = v ["er"]
+         return
+            (input === implies(l, r)) &&
+            eval(l, el) && eval(r, er) &&
+            (
+               (el === True && er === False && output === False) ||
+               (el === False && output === True) ||
+               (el === True && er === True && output === True)
+            )
+      })
+      ||
+      // b -B-> eb, p -B-> ep
+      // -----------------------------
+      // equiv(b,p) -B-> b <=>{Bool} p
+      delayed(freshn{v in
+         let l = v ["l"]
+         let r = v ["r"]
+         let el = v ["el"]
+         let er = v ["er"]
+         return
+            (input === equiv(l, r)) &&
+            eval(l, el) && eval(r, er) &&
+            (
+               (el === True && er === False && output === False) ||
+               (el === False && er === True && output === False) ||
+               (el === er && output === True)
+            )
+      })
 }
